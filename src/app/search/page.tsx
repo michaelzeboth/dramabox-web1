@@ -3,12 +3,22 @@ import Link from "next/link";
 import SearchForm from "@/components/SearchForm";
 import { getPopularSearch, searchDrama } from "@/lib/dramabox";
 
+function PlayIcon(props: React.SVGProps<SVGSVGElement>) {
+    return (
+        <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
+            <path d="M8 5.14v13.72a1 1 0 0 0 1.52.86l11-6.86a1 1 0 0 0 0-1.72l-11-6.86A1 1 0 0 0 8 5.14Z" />
+        </svg>
+    );
+}
+
 export default async function SearchPage({
     searchParams,
 }: {
-    searchParams: { q?: string };
+    searchParams: Promise<{ q?: string }>; // 👈 Changed to Promise
 }) {
-    const q = (searchParams.q ?? "").trim();
+    // 👇 Await searchParams
+    const params = await searchParams;
+    const q = (params.q ?? "").trim();
 
     const [popular, results] = await Promise.all([
         getPopularSearch().catch(() => []),
@@ -16,110 +26,147 @@ export default async function SearchPage({
     ]);
 
     return (
-        <main className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
-            <div className="mx-auto max-w-6xl px-4 py-10">
-                <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-                        <div>
-                            <h1 className="text-xl font-semibold tracking-tight text-slate-900">Search</h1>
-                            <p className="mt-1 text-sm text-slate-600">
-                                Cari drama berdasarkan judul.
-                            </p>
-                        </div>
-                        <Link
-                            href="/"
-                            className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-900 shadow-sm transition hover:bg-slate-50"
-                        >
-                            Kembali
-                        </Link>
+        <main className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
+            <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+                {/* Back Button */}
+                <Link
+                    href="/"
+                    className="inline-flex items-center gap-2 text-sm font-semibold text-slate-400 transition-colors hover:text-white"
+                >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                    Kembali
+                </Link>
+
+                {/* Search Section */}
+                <div className="mt-8">
+                    <div className="mb-6">
+                        <h1 className="text-3xl font-bold text-white">Search Drama</h1>
+                        <p className="mt-2 text-sm text-slate-400">
+                            Cari drama berdasarkan judul atau genre
+                        </p>
                     </div>
 
-                    <div className="mt-5">
-                        <SearchForm />
-                    </div>
+                    {/* Search Form */}
+                    <SearchForm />
 
                     {/* Popular Search */}
-                    <div className="mt-6">
-                        <div className="text-sm font-semibold text-slate-900">Popular Search</div>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                            {popular.slice(0, 12).map((p) => (
-                                <Link
-                                    key={p.bookId}
-                                    href={`/search?q=${encodeURIComponent(p.bookName)}`}
-                                    className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-200"
-                                >
-                                    {p.bookName}
-                                </Link>
-                            ))}
+                    {popular.length > 0 && (
+                        <div className="mt-8">
+                            <h2 className="mb-4 text-sm font-semibold text-slate-400">Popular Searches</h2>
+                            <div className="flex flex-wrap gap-2">
+                                {popular.slice(0, 15).map((p) => (
+                                    <Link
+                                        key={p.bookId}
+                                        href={`/search?q=${encodeURIComponent(p.bookName)}`}
+                                        className="rounded-lg bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-300 ring-1 ring-white/10 transition-all hover:bg-slate-700 hover:text-white hover:ring-white/20"
+                                    >
+                                        {p.bookName}
+                                    </Link>
+                                ))}
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </div>
 
-                {/* Results */}
+                {/* Search Results */}
                 {q ? (
-                    <section className="mt-8 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
-                        <div className="flex items-end justify-between gap-4">
+                    <div className="mt-12">
+                        <div className="mb-6 flex items-end justify-between">
                             <div>
-                                <h2 className="text-lg font-semibold text-slate-900">Hasil untuk: “{q}”</h2>
-                                <p className="mt-1 text-sm text-slate-600">{results.length} hasil</p>
+                                <h2 className="text-2xl font-bold text-white">
+                                    Results for "{q}"
+                                </h2>
+                                <p className="mt-1 text-sm text-slate-400">
+                                    {results.length} {results.length === 1 ? 'result' : 'results'} found
+                                </p>
                             </div>
                         </div>
 
-                        <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-                            {results.map((item) => {
-                                const img = item.coverWap || item.cover || "";
-                                const tags = (item.tagNames || item.tags || []).slice(0, 3);
+                        {results.length > 0 ? (
+                            <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                                {results.map((item) => {
+                                    const img = item.coverWap || item.cover || "";
+                                    const tags = (item.tagNames || item.tags || []).slice(0, 2);
 
-                                return (
-                                    <Link
-                                        key={item.bookId}
-                                        href={`/drama/${item.bookId}`}
-                                        className="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-                                    >
-                                        <div className="relative aspect-[3/4] w-full overflow-hidden bg-slate-100">
-                                            {img ? (
-                                                <Image
-                                                    src={img}
-                                                    alt={item.bookName}
-                                                    fill
-                                                    className="object-cover transition duration-300 group-hover:scale-[1.03]"
-                                                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-                                                />
+                                    return (
+                                        <Link
+                                            key={item.bookId}
+                                            href={`/drama/${item.bookId}`}
+                                            className="group overflow-hidden rounded-lg bg-slate-800 shadow-xl ring-1 ring-white/10 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl hover:ring-white/20"
+                                        >
+                                            <div className="relative aspect-[3/4] overflow-hidden bg-slate-700">
+                                                {img ? (
+                                                    <Image
+                                                        src={img}
+                                                        alt={item.bookName}
+                                                        fill
+                                                        className="object-cover transition duration-500 group-hover:scale-110"
+                                                        sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, (max-width: 1280px) 20vw, 16vw"
+                                                    />
+                                                ) : null}
+                                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+
+                                                <div className="absolute inset-x-0 bottom-0 p-3">
+                                                    {/* Meta */}
+                                                    {item.chapterCount ? (
+                                                        <div className="mb-2 flex items-center gap-1 text-xs text-slate-300">
+                                                            <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                                                                <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
+                                                            </svg>
+                                                            {item.chapterCount} EP
+                                                        </div>
+                                                    ) : null}
+
+                                                    {/* Title */}
+                                                    <h3 className="line-clamp-2 text-sm font-bold leading-tight text-white">
+                                                        {item.bookName}
+                                                    </h3>
+
+                                                    {/* Play Button */}
+                                                    <div className="mt-2 translate-y-2 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
+                                                        <div className="inline-flex items-center gap-1.5 rounded-md bg-white px-3 py-1.5 text-xs font-bold text-slate-900 shadow-lg">
+                                                            <PlayIcon className="h-3 w-3" />
+                                                            Play
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Tags */}
+                                            {tags.length > 0 ? (
+                                                <div className="p-3">
+                                                    <div className="flex flex-wrap gap-1.5">
+                                                        {tags.map((t) => (
+                                                            <span
+                                                                key={t}
+                                                                className="rounded-md bg-slate-700 px-2 py-0.5 text-[11px] font-semibold text-slate-300"
+                                                            >
+                                                                {t}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
                                             ) : null}
-                                            <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
-                                            <div className="absolute bottom-0 left-0 right-0 p-4">
-                                                <div className="truncate text-sm font-semibold text-white">
-                                                    {item.bookName}
-                                                </div>
-                                                <div className="mt-1 text-xs text-white/80">
-                                                    {item.chapterCount ? `${item.chapterCount} episode` : item.protagonist || ""}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="p-4">
-                                            <div className="flex flex-wrap gap-1.5">
-                                                {tags.map((t) => (
-                                                    <span
-                                                        key={t}
-                                                        className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-medium text-slate-700 ring-1 ring-slate-200"
-                                                    >
-                                                        {t}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </Link>
-                                );
-                            })}
-                        </div>
-
-                        {results.length === 0 ? (
-                            <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-                                Tidak ada hasil.
+                                        </Link>
+                                    );
+                                })}
                             </div>
-                        ) : null}
-                    </section>
+                        ) : (
+                            <div className="rounded-lg bg-slate-800 p-8 text-center shadow-xl ring-1 ring-white/10">
+                                <svg className="mx-auto h-12 w-12 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <p className="mt-4 text-sm font-medium text-slate-400">
+                                    No results found for "{q}"
+                                </p>
+                                <p className="mt-1 text-xs text-slate-500">
+                                    Try searching with different keywords
+                                </p>
+                            </div>
+                        )}
+                    </div>
                 ) : null}
             </div>
         </main>
