@@ -1,5 +1,6 @@
 import Link from "next/link";
 import PlayerWithTracking from "@/components/PlayerWithTracking";
+import DownloadButton from "@/components/DownloadButton";
 import { getDetail, getAllEpisodes, getBestVideoUrl } from "@/lib/dramabox";
 
 export default async function WatchPage({
@@ -12,13 +13,11 @@ export default async function WatchPage({
     const { bookId } = await params;
     const { chapterId } = await searchParams;
 
-    // Fetch detail dan episodes secara parallel
     const [detail, episodes] = await Promise.all([
         getDetail(bookId).catch(() => null),
         getAllEpisodes(bookId),
     ]);
 
-    // Error handling untuk detail
     if (!detail) {
         return (
             <main className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
@@ -111,7 +110,6 @@ export default async function WatchPage({
         );
     }
 
-    // Find next and previous episodes
     const currentIndex = episodes.findIndex((ep) => ep.chapterId === selected.chapterId);
     const nextEpisode = currentIndex < episodes.length - 1 ? episodes[currentIndex + 1] : null;
     const prevEpisode = currentIndex > 0 ? episodes[currentIndex - 1] : null;
@@ -148,6 +146,14 @@ export default async function WatchPage({
                             chapterId: selected.chapterId,
                             chapterIndex: selected.chapterIndex,
                         }}
+                    />
+                </div>
+
+                {/* Download Section */}
+                <div className="mt-6">
+                    <DownloadButton
+                        episode={selected}
+                        bookName={book.bookName}
                     />
                 </div>
 
