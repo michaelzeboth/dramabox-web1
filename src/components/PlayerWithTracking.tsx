@@ -49,7 +49,7 @@ export default function PlayerWithTracking({
         }
     }, [existing, meta.chapterId]);
 
-    const saveProgress = useCallback((currentTime: number, duration: number) => {
+    const saveProgress = useCallback(({ currentTime, duration }: { currentTime: number; duration: number }) => {
         const entry: ContinueWatchingEntry = {
             bookId: meta.bookId,
             bookName: meta.bookName,
