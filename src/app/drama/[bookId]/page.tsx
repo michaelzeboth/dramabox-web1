@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { getDetail } from "@/lib/dramabox";
+import { getDetail, getAllEpisodes } from "@/lib/dramabox";
 
 function PlayIcon(props: React.SVGProps<SVGSVGElement>) {
     return (
@@ -18,8 +18,12 @@ export default async function DramaDetailPage({
     const { bookId } = await params;
 
     let detail;
+    let episodes: Awaited<ReturnType<typeof getAllEpisodes>> = [];
     try {
-        detail = await getDetail(bookId);
+        [detail, episodes] = await Promise.all([
+            getDetail(bookId),
+            getAllEpisodes(bookId),
+        ]);
     } catch (e: any) {
         return (
             <main className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
@@ -87,8 +91,10 @@ export default async function DramaDetailPage({
     }
 
     const book = detail.data.book;
-    const chapters = detail.data.chapterList || [];
     const recommends = detail.data.recommends || [];
+    const chapters = (detail.data.chapterList && detail.data.chapterList.length > 0)
+        ? detail.data.chapterList.map((c) => ({ id: c.id, index: c.index, utime: c.utime }))
+        : episodes.map((ep) => ({ id: ep.chapterId, index: ep.chapterIndex, utime: undefined }));
     const firstPlayable = chapters[0];
 
     return (

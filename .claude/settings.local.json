@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s \"https://api.sansekai.my.id/api/dramabox/detail?bookId=42000009016\")"
+    ]
+  }
+}

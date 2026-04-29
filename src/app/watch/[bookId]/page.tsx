@@ -1,7 +1,14 @@
 import Link from "next/link";
 import PlayerWithTracking from "@/components/PlayerWithTracking";
 import DownloadButton from "@/components/DownloadButton";
-import { getDetail, getAllEpisodes, getBestVideoUrl } from "@/lib/dramabox";
+import {
+    getDetail,
+    getAllEpisodes,
+    getBestVideoUrl,
+    getPlayableUrl,
+    getDownloadQualities,
+    getSubtitles,
+} from "@/lib/dramabox";
 
 export default async function WatchPage({
     params,
@@ -86,9 +93,9 @@ export default async function WatchPage({
         );
     }
 
-    const videoUrl = getBestVideoUrl(selected);
+    const encryptedVideoUrl = getBestVideoUrl(selected);
 
-    if (!videoUrl) {
+    if (!encryptedVideoUrl) {
         return (
             <main className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
                 <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
@@ -110,13 +117,17 @@ export default async function WatchPage({
         );
     }
 
+    const playUrl = getPlayableUrl(encryptedVideoUrl);
+    const downloadQualities = getDownloadQualities(selected);
+    const subtitles = getSubtitles(selected);
+
     const currentIndex = episodes.findIndex((ep) => ep.chapterId === selected.chapterId);
     const nextEpisode = currentIndex < episodes.length - 1 ? episodes[currentIndex + 1] : null;
     const prevEpisode = currentIndex > 0 ? episodes[currentIndex - 1] : null;
 
     return (
         <main className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
-            <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+            <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6 lg:px-8">
                 {/* Header */}
                 <div className="flex items-center justify-between gap-4">
                     <Link
@@ -129,100 +140,118 @@ export default async function WatchPage({
                         Kembali
                     </Link>
 
-                    <div className="text-right">
-                        <div className="text-sm font-bold text-white">{book.bookName}</div>
+                    <div className="min-w-0 text-right">
+                        <div className="truncate text-sm font-bold text-white">{book.bookName}</div>
                         <div className="text-xs text-slate-400">{selected.chapterName}</div>
                     </div>
                 </div>
 
-                {/* Video Player */}
-                <div className="mt-6 overflow-hidden rounded-xl bg-black shadow-2xl ring-1 ring-white/10">
-                    <PlayerWithTracking
-                        src={videoUrl}
-                        meta={{
-                            bookId: book.bookId,
-                            bookName: book.bookName,
-                            cover: book.cover,
-                            chapterId: selected.chapterId,
-                            chapterIndex: selected.chapterIndex,
-                        }}
-                    />
-                </div>
+                {/* Two-column on lg+, stacked on smaller screens */}
+                <div className="mt-5 grid gap-6 lg:grid-cols-12">
+                    {/* Left: player stage + prev/next */}
+                    <div className="lg:col-span-7">
+                        {/* Stage: portrait 9:16, height capped by viewport so video tidak ngambil seluruh layar */}
+                        <div className="mx-auto aspect-[9/16] h-[min(72vh,640px)] overflow-hidden rounded-2xl bg-black shadow-2xl ring-1 ring-white/10">
+                            <PlayerWithTracking
+                                src={playUrl}
+                                meta={{
+                                    bookId: book.bookId,
+                                    bookName: book.bookName,
+                                    cover: book.cover,
+                                    chapterId: selected.chapterId,
+                                    chapterIndex: selected.chapterIndex,
+                                }}
+                                nextHref={
+                                    nextEpisode
+                                        ? `/watch/${encodeURIComponent(book.bookId)}?chapterId=${encodeURIComponent(nextEpisode.chapterId)}`
+                                        : undefined
+                                }
+                                nextLabel={nextEpisode ? `EP ${nextEpisode.chapterIndex + 1}` : undefined}
+                                subtitles={subtitles}
+                            />
+                        </div>
 
-                {/* Download Section */}
-                <div className="mt-6">
-                    <DownloadButton
-                        episode={selected}
-                        bookName={book.bookName}
-                    />
-                </div>
-
-                {/* Episode Navigation - Prev/Next */}
-                <div className="mt-6 flex gap-3">
-                    {prevEpisode ? (
-                        <Link
-                            href={`/watch/${encodeURIComponent(book.bookId)}?chapterId=${encodeURIComponent(prevEpisode.chapterId)}`}
-                            className="flex flex-1 items-center gap-3 rounded-xl bg-slate-800 p-4 shadow-xl ring-1 ring-white/10 transition-all hover:bg-slate-700 hover:ring-white/20"
-                        >
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-700">
-                                <svg className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                                </svg>
-                            </div>
-                            <div className="min-w-0 flex-1">
-                                <div className="text-xs font-medium text-slate-400">Previous</div>
-                                <div className="truncate text-sm font-bold text-white">
+                        {/* Prev / EP indicator / Next */}
+                        <div className="mx-auto mt-4 flex max-w-md items-stretch gap-2">
+                            {prevEpisode ? (
+                                <Link
+                                    href={`/watch/${encodeURIComponent(book.bookId)}?chapterId=${encodeURIComponent(prevEpisode.chapterId)}`}
+                                    className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-slate-800 px-3 py-2.5 text-sm font-semibold text-white ring-1 ring-white/10 transition-all hover:bg-slate-700 hover:ring-white/20"
+                                    aria-label={`Episode sebelumnya: EP ${prevEpisode.chapterIndex + 1}`}
+                                >
+                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                    </svg>
                                     EP {prevEpisode.chapterIndex + 1}
+                                </Link>
+                            ) : (
+                                <div className="flex flex-1 items-center justify-center rounded-lg bg-slate-800/40 px-3 py-2.5 text-sm font-medium text-slate-600 ring-1 ring-white/5">
+                                    —
                                 </div>
-                            </div>
-                        </Link>
-                    ) : null}
+                            )}
 
-                    {nextEpisode ? (
-                        <Link
-                            href={`/watch/${encodeURIComponent(book.bookId)}?chapterId=${encodeURIComponent(nextEpisode.chapterId)}`}
-                            className="flex flex-1 items-center gap-3 rounded-xl bg-slate-800 p-4 shadow-xl ring-1 ring-white/10 transition-all hover:bg-slate-700 hover:ring-white/20"
-                        >
-                            <div className="min-w-0 flex-1 text-right">
-                                <div className="text-xs font-medium text-slate-400">Next</div>
-                                <div className="truncate text-sm font-bold text-white">
+                            <div className="flex shrink-0 items-center justify-center rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-bold text-white ring-1 ring-white/10">
+                                EP {selected.chapterIndex + 1}
+                                <span className="ml-1 text-xs font-medium text-slate-500">/ {episodes.length}</span>
+                            </div>
+
+                            {nextEpisode ? (
+                                <Link
+                                    href={`/watch/${encodeURIComponent(book.bookId)}?chapterId=${encodeURIComponent(nextEpisode.chapterId)}`}
+                                    className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-slate-800 px-3 py-2.5 text-sm font-semibold text-white ring-1 ring-white/10 transition-all hover:bg-slate-700 hover:ring-white/20"
+                                    aria-label={`Episode berikutnya: EP ${nextEpisode.chapterIndex + 1}`}
+                                >
                                     EP {nextEpisode.chapterIndex + 1}
+                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                    </svg>
+                                </Link>
+                            ) : (
+                                <div className="flex flex-1 items-center justify-center rounded-lg bg-slate-800/40 px-3 py-2.5 text-sm font-medium text-slate-600 ring-1 ring-white/5">
+                                    —
                                 </div>
-                            </div>
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-700">
-                                <svg className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                </svg>
-                            </div>
-                        </Link>
-                    ) : null}
-                </div>
-
-                {/* Episode Grid */}
-                <div className="mt-8 rounded-xl bg-slate-800/50 p-6 shadow-xl ring-1 ring-white/10 backdrop-blur-sm">
-                    <div className="mb-4 flex items-center justify-between">
-                        <h2 className="text-lg font-bold text-white">All Episodes</h2>
-                        <span className="text-sm text-slate-400">{episodes.length} total</span>
+                            )}
+                        </div>
                     </div>
 
-                    <div className="grid grid-cols-4 gap-3 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10">
-                        {episodes.map((ep) => {
-                            const isActive = ep.chapterId === selected.chapterId;
-                            return (
-                                <Link
-                                    key={ep.chapterId}
-                                    href={`/watch/${encodeURIComponent(book.bookId)}?chapterId=${encodeURIComponent(ep.chapterId)}`}
-                                    className={[
-                                        "flex aspect-square items-center justify-center rounded-lg text-sm font-bold shadow-lg transition-all",
-                                        isActive
-                                            ? "bg-white text-slate-900 ring-2 ring-white"
-                                            : "bg-slate-700 text-white ring-1 ring-white/10 hover:bg-slate-600 hover:ring-white/20",
-                                    ].join(" ")}
-                                >
-                                    {ep.chapterIndex + 1}
-                                </Link>
-                            );
-                        })}
+                    {/* Right: episode grid + download */}
+                    <div className="space-y-5 lg:col-span-5">
+                        {/* Episode Grid (scroll bila banyak) */}
+                        <div className="rounded-xl bg-slate-800/50 p-4 shadow-xl ring-1 ring-white/10 backdrop-blur-sm">
+                            <div className="mb-3 flex items-center justify-between">
+                                <h2 className="text-sm font-bold text-white">All Episodes</h2>
+                                <span className="text-xs text-slate-400">{episodes.length} total</span>
+                            </div>
+
+                            <div className="max-h-[44vh] overflow-y-auto pr-1">
+                                <div className="grid grid-cols-6 gap-2 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-6 xl:grid-cols-7">
+                                    {episodes.map((ep) => {
+                                        const isActive = ep.chapterId === selected.chapterId;
+                                        return (
+                                            <Link
+                                                key={ep.chapterId}
+                                                href={`/watch/${encodeURIComponent(book.bookId)}?chapterId=${encodeURIComponent(ep.chapterId)}`}
+                                                className={[
+                                                    "flex aspect-square items-center justify-center rounded-md text-xs font-bold transition-all",
+                                                    isActive
+                                                        ? "bg-white text-slate-900 ring-2 ring-white"
+                                                        : "bg-slate-700 text-white ring-1 ring-white/10 hover:bg-slate-600 hover:ring-white/20",
+                                                ].join(" ")}
+                                            >
+                                                {ep.chapterIndex + 1}
+                                            </Link>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Download Section */}
+                        <DownloadButton
+                            qualities={downloadQualities}
+                            bookName={book.bookName}
+                            episodeIndex={selected.chapterIndex}
+                        />
                     </div>
                 </div>
             </div>
